@@ -73,7 +73,8 @@
 
 (define (fix-finger node)
   (let* ((system-info (with-input-from-file "nodes/0" read-all))
-	 (version-info (car system-info)))
+	 (version-info (car system-info))
+	 (node-info (car version-info)))
     (with-output-to-file "nodes/t0"
       (lambda ()
 	(display version-info)
@@ -91,6 +92,22 @@
 	       (cons (list (car entry) next (table->list finger-table)) (loop (cdr fingers)))))
 	    (#t (cons (car fingers) (loop (cdr fingers)))))))))
     (rename-file "nodes/t0" "nodes/0" #t)))
+
+;;;
+;;;; Sort node info
+;;;
+
+(define (maybe-sort-node-info)
+  (let* ((version-info (with-input-from-file "nodes/0" read))
+	 (node-info (car version-info)))
+    (if (not (apply < node-info))
+	(let ((system-info (with-input-from-file "nodes/0" read-all)))
+	  (with-output-to-file "nodes/t0"
+	    (lambda ()
+	      (display
+	       (cons (sort node-info) (cdr version-info)))
+	      (newline)
+	      (display (cadr system-info))))))))
 
 ;;;
 ;;;; update Version (TODO OPTIMIZE)
