@@ -20,10 +20,10 @@
 ;;;; Ring Size
 ;;;
 
-(define m 20)
+(define m 30)
 (define ring-size (expt 2 m))
 
-(define initial-node-count m)
+(define initial-node-count 100)
 
 ;;;
 ;;;; initialize nodes
@@ -38,7 +38,7 @@
 	     (lambda ()			       
 	       (display (cons (reverse base) (list 0)))
 	       (newline)
-	       (display fingers)))
+	       (display (cons (list 0 1 (list (list 1 e))) fingers))))
 	  (and
 	   (with-output-to-file
 	       (list path: (string-append "nodes/" (number->string n))
@@ -51,21 +51,44 @@
 	   (cons n (loop (+ n e))))))))
 
 ;;;
+;;;; Tablize
+;;;
+
+(define (tablize fi)
+  (list->table (let loop ((fi fi))
+		 (if (null? fi) '()
+		     (cons (cons (car (car fi)) (list->table (caddr (car fi)))) (loop (cdr fi)))))))
+
+;;;
 ;;;; Find Successor
 ;;;
 
-(define (find-successor id)
+(define (find-successor node id)
   (let* ((system-info (with-input-from-file "nodes/0" read-all))
 	 (version-info (car system-info))
-	 (node-info (car version-info))
+	 (node-info (cons 0 (append (car version-info) (list (car (car version-info))))))
 	 (version-number (car (reverse version-info)))
 	 (finger-info (cadr system-info))
+	 (finger-tables (tablize finger-info))
 	 (id (modulo id ring-size)))
-    (let loop ((l 0) (nodes node-info))
+    (let loop ((n node))
+      (let ((finger-table (table-ref finger-tables n))
+	    (succ (cadr (member n node-info))))
+	(if (between id n succ) succ
+	    (let ((cn (closest-proceeding-node n finger-table id)))
+	      (loop cn)))))))
+
+;;;
+;;;; Closest Proceeding Node (Could Optimize some?)
+;;;
+
+(define (closest-proceeding-node n finger-table id)
+  (let loop ((i m))
+    (let ((val (table-ref finger-table i #f)))
       (cond
-       ((null? nodes) (car node-info))
-       ((between id l (car nodes)) (car nodes))
-       (#t (loop (car nodes) (cdr nodes)))))))
+       ((= i 1) (car val))
+       ((and val (between (car val) n id include?: #f)) (car val))
+       (#t (loop (- i 1)))))))
 
 ;;;
 ;;;; Fix Finger
@@ -88,7 +111,7 @@
 		    (next (+ 1 (cadr entry)))
 		    (next (if (> next m) 1 next))
 		    (finger-table (list->table (list-ref entry 2))))
-		   (table-set! finger-table next (list (find-successor (+ (car entry) (expt 2 (- next 1))))))
+		   (table-set! finger-table next (list (find-successor 0 (+ (car entry) (expt 2 (- next 1))))))
 	       (cons (list (car entry) next (table->list finger-table)) (loop (cdr fingers)))))
 	    (#t (cons (car fingers) (loop (cdr fingers)))))))))
     (rename-file "nodes/t0" "nodes/0" #t)))
@@ -110,10 +133,10 @@
 	      (display (cadr system-info))))))))
 
 ;;;
-;;;; update Version (TODO OPTIMIZE)
+;;;; Update Fingers
 ;;;
 
-(define (update-version)
+(define (update-fingers)
   (let* ((system-info (with-input-from-file "nodes/0" read-all))
 	 (version-info (car system-info))
 	 (node-info (car version-info))
@@ -121,12 +144,17 @@
 	 (finger-info (cadr system-info)))
     (println "Updating to version " (+ 1 version-number))
     (let loop ((i m))
-      (if (zero? i) (println "Updated")
+      (if (zero? i)
+	  (let loop ((i m))
+	    (if (zero? i) (println "Updated")
+		(and
+		 (fix-finger 0)
+		 (loop (- i 1)))))
 	  (and (let inner-loop ((node-info node-info))
 		 (if (not (null? node-info))
-		    (and 
-		     (fix-finger (car node-info))
-		     (inner-loop (cdr node-info)))))
+		     (and 
+		      (fix-finger (car node-info))
+		      (inner-loop (cdr node-info)))))
 	       (loop (- i 1)))))))
 
 ;;;
@@ -145,7 +173,8 @@
   (newline))
 
 (define (between n l u #!key (include? #t))
-  (and (> n l) (if include? (<= n u) (< n u))))
+  (if (> l u) (between n l (+ u ring-size) include?: include?)
+      (and (> n l) (if include? (<= n u) (< n u)))))
 
 ;;;
 ;;;; tests
@@ -154,4 +183,4 @@
 ;;(step-level-set! 5)
 ;;(break fix-finger)
 (initialize-system)
-(update-version)
+(update-fingers)
