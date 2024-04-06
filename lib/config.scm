@@ -11,56 +11,40 @@
 ;;
 ;;
 ;; Author: Ivan Jordaan
-;; Date: 2024-03-26
+;; Date: 2024-04-05
 ;; email: ivan@axoinvent.com
-;; Project: Database file to serve as append-only ledger 
+;; Project: Config File for BroodB 
 ;;
 
-;;;
-;;;; perm-path
-;;;
 
-(define perm-path "perm.txt")
+;; m value
 
-;;;
-;;;; Generate internal ID
-;;;
+(define m 20)
 
-(define (gi)
-  (string-append "iID-" (number->string (random-integer 9999999999999999)) "-"  (number->string (current-jiffy))))
+;; Ring Size
 
-;;;
-;;;; Create Entry
-;;;
+(define ring-size (expt 2 m))
 
-(define (create-entry . a)
-  (cons (cons "iID" (gi)) a))
+;; Amount of initial nodes
 
-;;;
-;;;; Add Entry To Perm
-;;;
+(define initial-node-count 10)
 
-(define (add-entry-to-perm e)
-  (with-output-to-file (list
-			path: perm-path
-			append: #t)
-    (lambda ()
-      (display e))))
+;; data path
 
-;;;
-;;;; Find in Perm
-;;;
+(define data-path "../data")
 
-(define (find-in-perm iID)
-  (let ((p (open-file (list path: perm-path char-encoding: UTF-8))))
-    (let loop ((pe (read p)))
-      (if
-       (eof-object? pe) (make-table)
-	 (if (equal? iID (table-ref "iID" pe)) pe
-	     (loop (read p)))))))
+;; node path
 
-;;;
-;;;; Tests
-;;;
+(define node-path (string-append data-path "/nodes"))
 
-(add-entry-to-perm (create-entry (cons "1"  1) (cons "2" (list 1 2 3))))
+;; perm-path
+
+(define perm-path (string-append data-path "/perm/perm"))
+
+;; host path
+
+(define host-path (string-append node-path "/0"))
+
+;; tmp path
+
+(define tmp-path (string-append node-path "/tmp"))

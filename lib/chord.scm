@@ -17,15 +17,6 @@
 ;;
 
 ;;;
-;;;; Ring Size
-;;;
-
-(define m 30)
-(define ring-size (expt 2 m))
-
-(define initial-node-count 100)
-
-;;;
 ;;;; initialize nodes
 ;;;
 
@@ -34,14 +25,14 @@
   (let ((e (ceiling (/ ring-size (+ 1 initial-node-count)))) (base '()) (fingers '()))
     (let loop ((n e))
       (if (>= n ring-size)
-	   (with-output-to-file "nodes/0"
+	   (with-output-to-file host-path
 	     (lambda ()			       
 	       (display (cons (reverse base) (list 0)))
 	       (newline)
 	       (display (cons (list 0 1 (list (list 1 e))) fingers))))
 	  (and
 	   (with-output-to-file
-	       (list path: (string-append "nodes/" (number->string n))
+	       (list path: (string-append node-path "/" (number->string n))
 		     create: #t)
 	     (lambda ()
 	       (display (list "version" 0 "size" e "load" 0))
@@ -64,7 +55,7 @@
 ;;;
 
 (define (find-successor node id)
-  (let* ((system-info (with-input-from-file "nodes/0" read-all))
+  (let* ((system-info (with-input-from-file host-path read-all))
 	 (version-info (car system-info))
 	 (node-info (cons 0 (append (car version-info) (list (car (car version-info))))))
 	 (version-number (car (reverse version-info)))
@@ -95,10 +86,10 @@
 ;;;
 
 (define (fix-finger node)
-  (let* ((system-info (with-input-from-file "nodes/0" read-all))
+  (let* ((system-info (with-input-from-file host-path read-all))
 	 (version-info (car system-info))
 	 (node-info (car version-info)))
-    (with-output-to-file "nodes/t0"
+    (with-output-to-file tmp-path
       (lambda ()
 	(display version-info)
 	(newline)
@@ -114,18 +105,18 @@
 		   (table-set! finger-table next (list (find-successor 0 (+ (car entry) (expt 2 (- next 1))))))
 	       (cons (list (car entry) next (table->list finger-table)) (loop (cdr fingers)))))
 	    (#t (cons (car fingers) (loop (cdr fingers)))))))))
-    (rename-file "nodes/t0" "nodes/0" #t)))
+    (rename-file tmp-path host-path #t)))  
 
 ;;;
 ;;;; Sort node info
 ;;;
 
 (define (maybe-sort-node-info)
-  (let* ((version-info (with-input-from-file "nodes/0" read))
+  (let* ((version-info (with-input-from-file host-path read))
 	 (node-info (car version-info)))
     (if (not (apply < node-info))
-	(let ((system-info (with-input-from-file "nodes/0" read-all)))
-	  (with-output-to-file "nodes/t0"
+	(let ((system-info (with-input-from-file host-path read-all)))
+	  (with-output-to-file tmp-path
 	    (lambda ()
 	      (display
 	       (cons (sort node-info) (cdr version-info)))
@@ -137,7 +128,7 @@
 ;;;
 
 (define (update-fingers)
-  (let* ((system-info (with-input-from-file "nodes/0" read-all))
+  (let* ((system-info (with-input-from-file host-path read-all))
 	 (version-info (car system-info))
 	 (node-info (car version-info))
 	 (version-number (car (reverse version-info)))
@@ -162,25 +153,18 @@
 ;;;
 
 (define (reset-clean-dir p)
-  (if (member p (directory-files)) (let ()
-				     (delete-file-or-directory p #t)
-				     (display "Destroying old ")
-				     (display p)
-				     (newline)))
-  (create-directory p)
-  (display "Creating new ")
-  (display p)
-  (newline))
+  (let ((abs-path (string-append data-path "/" p)))
+    (if (member p (directory-files data-path))
+	(let ()
+	  (delete-file-or-directory abs-path #t)
+	  (display "Destroying old ")
+	  (display p)
+	  (newline)))
+    (create-directory abs-path)
+    (display "Creating new ")
+    (display p)
+    (newline)))
 
 (define (between n l u #!key (include? #t))
   (if (> l u) (between n l (+ u ring-size) include?: include?)
       (and (> n l) (if include? (<= n u) (< n u)))))
-
-;;;
-;;;; tests
-;;;
-
-;;(step-level-set! 5)
-;;(break fix-finger)
-(initialize-system)
-(update-fingers)
