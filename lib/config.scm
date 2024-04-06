@@ -40,6 +40,10 @@
 
 (define perm-path (string-append data-path "/perm/perm"))
 
+;; version path
+
+(define (version-path version) (string-append data-path "/version/" (number->string version)))
+
 ;; tmp path
 
 (define (tmp-path node) (string-append nodes-path "/tmp-" (number->string node)))

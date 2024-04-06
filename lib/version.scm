@@ -25,6 +25,9 @@
 
 (define (initialize-version)
   (reset-clean-dir "version")
+  (close-port (open-file (list
+			  path: (version-path version-number)
+			  create: #t)))
   (set! version-number 0))
 
 ;;;
@@ -71,6 +74,12 @@
 (define (add-entry-to-node node node-info id entry)
   (let ((node-path-local (node-path node))
 	(tmp-path-local (tmp-path node)))
+    (with-output-to-file (list
+			  path: (version-path version-number)
+			  append: #t)
+      (lambda ()
+	(display entry)
+	(newline)))
     (with-output-to-file tmp-path-local
 	  (lambda ()
 	    (let ((t (list->table (car node-info))))
