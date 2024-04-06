@@ -39,13 +39,14 @@
 ;;;; Add Entry To Perm
 ;;;
 
-(define (add-entry-to-perm e)
+(define (add-entry-to-perm id t)
   (with-output-to-file (list
 			path: perm-path
 			append: #t)
     (lambda ()
-      (display e)
-      (display ", "))))
+	  (begin
+	    (display (cons id t))
+	    (newline)))))
 
 ;;;
 ;;;; Initialize-perm

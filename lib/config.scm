@@ -33,18 +33,22 @@
 
 (define data-path "../data")
 
-;; node path
+;; nodes path
 
-(define node-path (string-append data-path "/nodes"))
+(define nodes-path (string-append data-path "/nodes"))
 
 ;; perm-path
 
 (define perm-path (string-append data-path "/perm/perm"))
 
-;; host path
-
-(define host-path (string-append node-path "/0"))
-
 ;; tmp path
 
-(define tmp-path (string-append node-path "/tmp"))
+(define (tmp-path node) (string-append nodes-path "/tmp-" (number->string node)))
+
+;; node-path
+
+(define (node-path node) (string-append nodes-path "/" (number->string node)))
+
+;; host path
+
+(define host-path (node-path 0))

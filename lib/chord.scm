@@ -32,10 +32,12 @@
 	       (display (cons (list 0 1 (list (list 1 e))) fingers))))
 	  (and
 	   (with-output-to-file
-	       (list path: (string-append node-path "/" (number->string n))
+	       (list path: (node-path n)
 		     create: #t)
 	     (lambda ()
-	       (display (list "version" 0 "size" e "load" 0))
+	       (display (list (list 'version version-number) (list 'size e) (list 'load 0) (list 'entries)))
+	       (newline)
+	       (display (list))
 	       (newline)))
 	   (set! fingers (cons (list n 1 (list (list 1 (if (>= (+ n e) ring-size) e (+ n e))))) fingers))
 	   (set! base (cons n base))
@@ -70,7 +72,7 @@
 	      (loop cn)))))))
 
 ;;;
-;;;; Closest Proceeding Node (Could Optimize some?)
+;;;; Closest Proceeding Node
 ;;;
 
 (define (closest-proceeding-node n finger-table id)
@@ -89,7 +91,7 @@
   (let* ((system-info (with-input-from-file host-path read-all))
 	 (version-info (car system-info))
 	 (node-info (car version-info)))
-    (with-output-to-file tmp-path
+    (with-output-to-file (tmp-path 0)
       (lambda ()
 	(display version-info)
 	(newline)
@@ -105,7 +107,7 @@
 		   (table-set! finger-table next (list (find-successor 0 (+ (car entry) (expt 2 (- next 1))))))
 	       (cons (list (car entry) next (table->list finger-table)) (loop (cdr fingers)))))
 	    (#t (cons (car fingers) (loop (cdr fingers)))))))))
-    (rename-file tmp-path host-path #t)))  
+    (rename-file (tmp-path 0) host-path #t)))  
 
 ;;;
 ;;;; Sort node info
@@ -116,12 +118,13 @@
 	 (node-info (car version-info)))
     (if (not (apply < node-info))
 	(let ((system-info (with-input-from-file host-path read-all)))
-	  (with-output-to-file tmp-path
+	  (with-output-to-file (tmp-path 0)
 	    (lambda ()
 	      (display
 	       (cons (sort node-info) (cdr version-info)))
 	      (newline)
-	      (display (cadr system-info))))))))
+	      (display (cadr system-info))))
+	  (rename-file (tmp-path 0) host-path #t)))))
 
 ;;;
 ;;;; Update Fingers
@@ -168,3 +171,7 @@
 (define (between n l u #!key (include? #t))
   (if (> l u) (between n l (+ u ring-size) include?: include?)
       (and (> n l) (if include? (<= n u) (< n u)))))
+
+(define (and-map p l)
+  (if (null? l) #t
+      (and (p (car l)) (and-map p (cdr l)))))

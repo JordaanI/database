@@ -18,10 +18,20 @@
 
 (include "../lib/config.scm")
 (include "../lib/perm.scm")
-(include "../lib/version.scm")
 (include "../lib/chord.scm")
+(include "../lib/version.scm")
+
+;; Initialization
 
 (initialize-system)
 (update-fingers)
 (initialize-perm)
 (initialize-version)
+
+;; Tests
+
+(define (test)
+  (create-concept
+   label: "Initial Test"))
+
+(test)
