@@ -28,6 +28,13 @@
   (set! version-number 0))
 
 ;;;
+;;;; Utilities
+;;;
+
+(define (node-info-contain? id node-info)
+  (member id (cdr (assoc 'entries (car node-info)))))
+
+;;;
 ;;;; Types
 ;;;
 
@@ -44,11 +51,12 @@
 		      (instances ,@instances)))
 	     (node (find-successor 0 id))
 	     (node-info (with-input-from-file (node-path node) read-all)))
-	(if (not (member id (cdr (assoc 'entries (car node-info)))))
-	 (begin
+	(if (not (node-info-contain? id node-info))
+	 (and
 	   (add-entry-to-perm id entry)
 	   (add-entry-to-node node node-info id entry)
-	   (set! version-load (/ (+ version-load 1) ring-size)))
+	   (set! version-load (/ (+ version-load 1) ring-size))
+	   id)
 	 (create-concept
 	  label: label
 	  description: description
@@ -70,5 +78,17 @@
 	      (table-set! t 'load (list (/ (length (table-ref t 'entries)) (car (table-ref t 'size)))))
 	      (display (table->list t))
 	      (newline)
-	      (display (cons entry (cadr node-info))))))
+	      (display (cons (cons id entry) (cadr node-info))))))
 	(rename-file tmp-path-local node-path-local #t)))
+
+;;;
+;;;; Get Entry
+;;;
+
+(define (get-concept id)
+  (let* ((node (find-successor 0 id))
+	 (node-path-local (node-path node))
+	 (node-info (with-input-from-file node-path-local read)))
+    (if (node-info-contain? id (list node-info))
+	(cdr (assoc id (cadr (with-input-from-file node-path-local read-all))))
+	(raise 'record-does-not-exist))))

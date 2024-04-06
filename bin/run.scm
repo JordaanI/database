@@ -30,8 +30,10 @@
 
 ;; Tests
 
-(define (test)
+(define (test a)
   (create-concept
    label: "Initial Test"))
 
-(test)
+(define nodes
+  (map test (make-list 10)))
+

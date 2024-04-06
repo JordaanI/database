@@ -22,7 +22,7 @@
 
 (define (initialize-system)
   (reset-clean-dir "nodes")
-  (let ((e (ceiling (/ ring-size (+ 1 initial-node-count)))) (base '()) (fingers '()))
+  (let ((e (floor (/ ring-size (+ 1 initial-node-count)))) (base '()) (fingers '()))
     (let loop ((n e))
       (if (>= n ring-size)
 	   (with-output-to-file host-path
@@ -103,8 +103,10 @@
 	     (let* ((entry (car fingers))
 		    (next (+ 1 (cadr entry)))
 		    (next (if (> next m) 1 next))
-		    (finger-table (list->table (list-ref entry 2))))
-		   (table-set! finger-table next (list (find-successor 0 (+ (car entry) (expt 2 (- next 1))))))
+		    (finger-table (list->table (list-ref entry 2)))
+		    (id (+ (car entry) (expt 2 (- next 1))))
+		    (id (if (= ring-size id) 1 id)))
+		   (table-set! finger-table next (list (find-successor 0 id)))
 	       (cons (list (car entry) next (table->list finger-table)) (loop (cdr fingers)))))
 	    (#t (cons (car fingers) (loop (cdr fingers)))))))))
     (rename-file (tmp-path 0) host-path #t)))  

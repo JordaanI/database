@@ -19,7 +19,7 @@
 
 ;; m value
 
-(define m 20)
+(define m 8)
 
 ;; Ring Size
 
@@ -27,8 +27,7 @@
 
 ;; Amount of initial nodes
 
-(define initial-node-count 10)
-
+(define initial-node-count 3)
 ;; data path
 
 (define data-path "../data")
