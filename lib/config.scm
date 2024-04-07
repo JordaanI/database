@@ -27,7 +27,7 @@
 
 ;; Amount of initial nodes
 
-(define initial-node-count 3)
+(define initial-node-count 4)
 ;; data path
 
 (define data-path "../data")

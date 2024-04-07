@@ -24,9 +24,9 @@
 ;; Initialization
 
 (initialize-system)
-(update-fingers)
 (initialize-perm)
 (initialize-version)
+(update-fingers)
 
 ;; Tests
 
@@ -35,5 +35,5 @@
    label: "Initial Test"))
 
 (define nodes
-  (map test (make-list 10)))
+  (map test (make-list 1)))
 

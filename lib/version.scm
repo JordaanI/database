@@ -101,3 +101,37 @@
     (if (node-info-contain? id (list node-info))
 	(cdr (assoc id (cadr (with-input-from-file node-path-local read-all))))
 	(raise 'record-does-not-exist))))
+
+;;;
+;;;; Get Concept Value
+;;;
+
+(define (get-concept-value concept heading)
+  (cdr (assoc heading concept)))
+
+;;;
+;;;; Get concept value from id
+;;;
+
+(define (get-concept-value! id heading)
+  (get-concept-value (get-concept id) heading))
+
+;;;
+;;;; Update Concept
+;;;
+
+(define (update-concept id update)
+  (let* ((concept (get-concept id))
+	 (new-concept
+	  (let loop ((concept concept))
+	    (cond
+	     ((null? concept) '())
+	     ((equal? (car update) (car (car concept))) (cons update (loop (cdr concept))))
+	     (#t (cons (car concept) (loop (cdr concept))))))))
+    (create-concept
+     label: (get-concept-value new-concept 'label)
+     description: (get-concept-value new-concept 'description)
+     sub-concepts: (get-concept-value new-concept 'sub-concepts)
+     super-concepts: (get-concept-value new-concept 'super-concepts)
+     instances: (get-concept-value new-concept 'instances)
+     properties: (get-concept-value new-concept 'properties))))
