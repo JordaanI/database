@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;                                                                                        ;;;
 ;;;     __  .______     ______   .__   __.    .______    __    _______.                    ;;;
-;;;    |  | |   _  \   /  __  \  |  \ |  |    |   _  \  |  |  /  _____|        _____       ;;;   
+;;;    |  | |   _  \   /  __  \  |  \ |  |    |   _  \  |  |  /  _____|        _____       ;;;
 ;;;    |  | |  |_)  | |  |  |  | |   \|  |    |  |_)  | |  | |  |  __      ^..^     \9     ;;;
 ;;;    |  | |      /  |  |  |  | |  . `  |    |   ___/  |  | |  | |_ |     (oo)_____/      ;;;
 ;;;    |  | |  |\  \  |  `--'  | |  |\   |    |  |      |  | |  |__| |        WW  WW       ;;;
@@ -13,7 +13,7 @@
 ;; Author: Ivan Jordaan
 ;; Date: 2024-04-05
 ;; email: ivan@axoinvent.com
-;; Project: Versioning File of BroodB 
+;; Project: Versioning File of BroodB
 ;;
 
 ;;
@@ -25,113 +25,132 @@
 
 (define (initialize-version)
   (reset-clean-dir "version")
-  (close-port (open-file (list
-			  path: (version-path version-number)
-			  create: #t)))
-  (set! version-number 0))
+  (with-output-to-file
+      (list
+       path: (version-path version-number)
+       create: #t)
+    (lambda ()
+      (display `(active))
+      (newline)
+      (display `(remove)))))
 
 ;;;
-;;;; Utilities
+;;;; Version Utilities
 ;;;
 
-(define (node-info-contain? id node-info)
-  (member id (cdr (assoc 'entries (car node-info)))))
+(define (get-property-values property concept)
+  (cdr (assoc property concept)))
+
+(define (get-first-value property l)
+  (car (get-property-values property l)))
+
+(define (get-active version)
+  (get-property-values 'active version))
+
+(define (get-remove version)
+  (get-property-values 'remove version))
+;;;
+;;;; Create concept
+;;;
+
+(define (create-concept-template id properties)
+  `((id ,id) ,@properties))
+
+(define (get-id concept)
+  (get-first-value 'id concept))
+;;;
+;;;; Concept id taken?
+;;;
+
+(define (id-available id)
+  (let* ((successor (find-successor 0 id))
+         (node-info (with-input-from-file (node-path successor) read)))
+    (if (not (member id (cdr (assoc 'entries node-info)))) successor #f)))
 
 ;;;
-;;;; Types
+;;;; Add to version
 ;;;
 
-;; Concept
-
-(define (create-concept #!key label (description '()) (sub-concepts '()) (super-concepts '()) (instances '()) (properties '()))
-  (if (and-map list? (list description sub-concepts super-concepts instances properties))
-      (let* ((id (gen-id))
-	     (entry `((label (,label))
-		      (description ,@description)
-		      (sub-concepts ,@sub-concepts)
-		      (super-concepts ,@super-concepts)
-		      (properties ,@properties)
-		      (instances ,@instances)))
-	     (node (find-successor 0 id))
-	     (node-info (with-input-from-file (node-path node) read-all)))
-	(if (not (node-info-contain? id node-info))
-	 (and
-	   (add-entry-to-perm id entry)
-	   (add-entry-to-node node node-info id entry)
-	   (set! version-load (/ (+ version-load 1) ring-size))
-	   id)
-	 (create-concept
-	  label: label
-	  description: description
-	  sub-concepts: sub-concepts
-	  super-concepts: super-concepts
-	  instances: instances
-	  properties: properties)))))
-
-
-;; add-entry-to-node
-
-(define (add-entry-to-node node node-info id entry)
-  (let ((node-path-local (node-path node))
-	(tmp-path-local (tmp-path node)))
+(define (add-to-version id)
+  (let* ((version (with-input-from-file (version-path version-number) read-all))
+         (active (get-active version))
+         (remove (get-remove version)))
     (with-output-to-file (list
-			  path: (version-path version-number)
-			  append: #t)
+                          path: (tmp-version version-number)
+                          create: #t)
       (lambda ()
-	(display entry)
-	(newline)))
-    (with-output-to-file tmp-path-local
-	  (lambda ()
-	    (let ((t (list->table (car node-info))))
-	      (table-set! t 'entries (cons id (table-ref t 'entries)))
-	      (table-set! t 'load (list (/ (length (table-ref t 'entries)) (car (table-ref t 'size)))))
-	      (display (table->list t))
-	      (newline)
-	      (display (cons (cons id entry) (cadr node-info))))))
-	(rename-file tmp-path-local node-path-local #t)))
+        (display `(active ,id ,@active))
+        (newline)
+        (display `(remove ,@remove))))
+    (rename-file (tmp-version version-number) (version-path version-number))))
 
 ;;;
-;;;; Get Entry
+;;;; Add to node
+;;;
+
+(define (add-to-node id concept successor)
+  (let* ((node (with-input-from-file (node-path successor) read-all))
+         (node-info (car node))
+         (node-entries (cdr node)))
+    (with-output-to-file (list
+                          path: (tmp-path successor)
+                          create: #t)
+      (lambda ()
+        (display `(,(assoc 'version node-info)
+                   ,(assoc 'size node-info)
+                   (load ,(+ 1 (get-first-value 'load node-info)))
+                   (entries ,id ,@(get-property-values 'entries node-info))))
+        (display (list id concept))
+        (for-each display node-entries)))
+    (rename-file (tmp-path successor) (node-path successor))))
+
+;;;
+;;;; Maybe add concept to version
+;;;
+
+(define (add-concept-to-version id concept)
+  (let ((successor (find-successor 0 id)))
+    (add-to-perm concept)
+    (add-to-version id)
+    (add-to-node id concept successor)
+    id))
+
+;;;
+;;;; Next available id (could loop infinitely, needs to be restricted when all id's are taken)
+;;;
+
+(define (next-available-id)
+  (let ((id (gen-id)))
+    (if (id-available id) id (next-available-id))))
+
+;;;
+;;;; Create Concept
+;;;
+
+(define (create-concept . properties)
+  (let ((id (next-available-id)))
+    (add-concept-to-version id (create-concept-template id properties))))
+
+;;;
+;;;; Get Concept
 ;;;
 
 (define (get-concept id)
-  (let* ((node (find-successor 0 id))
-	 (node-path-local (node-path node))
-	 (node-info (with-input-from-file node-path-local read)))
-    (if (node-info-contain? id (list node-info))
-	(cdr (assoc id (cadr (with-input-from-file node-path-local read-all))))
-	(raise 'record-does-not-exist))))
+  (let* ((successor (find-successor 0 id))
+         (node (open-file (node-path successor))))
+    (if (member id (get-property-values 'entries (read node)))
+        (find-concept id node)
+        (and
+         (close-port node)
+         (raise "Entry does not exist")))))
 
 ;;;
-;;;; Get Concept Value
+;;;; Find concept
 ;;;
 
-(define (get-concept-value concept heading)
-  (cdr (assoc heading concept)))
-
-;;;
-;;;; Get concept value from id
-;;;
-
-(define (get-concept-value! id heading)
-  (get-concept-value (get-concept id) heading))
-
-;;;
-;;;; Update Concept
-;;;
-
-(define (update-concept id update)
-  (let* ((concept (get-concept id))
-	 (new-concept
-	  (let loop ((concept concept))
-	    (cond
-	     ((null? concept) '())
-	     ((equal? (car update) (car (car concept))) (cons update (loop (cdr concept))))
-	     (#t (cons (car concept) (loop (cdr concept))))))))
-    (create-concept
-     label: (get-concept-value new-concept 'label)
-     description: (get-concept-value new-concept 'description)
-     sub-concepts: (get-concept-value new-concept 'sub-concepts)
-     super-concepts: (get-concept-value new-concept 'super-concepts)
-     instances: (get-concept-value new-concept 'instances)
-     properties: (get-concept-value new-concept 'properties))))
+(define (find-concept id node)
+  (let ((entry (read node)))
+    (cond
+     ((eof-object? entry) (raise "Entry does not exist"))
+     ((equal? (car entry) id) (and (close-port node) (cadr entry)))
+     (#t (find-concept id node)))))

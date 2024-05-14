@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;                                                                                        ;;;
 ;;;     __  .______     ______   .__   __.    .______    __    _______.                    ;;;
-;;;    |  | |   _  \   /  __  \  |  \ |  |    |   _  \  |  |  /  _____|        _____       ;;;   
+;;;    |  | |   _  \   /  __  \  |  \ |  |    |   _  \  |  |  /  _____|        _____       ;;;
 ;;;    |  | |  |_)  | |  |  |  | |   \|  |    |  |_)  | |  | |  |  __      ^..^     \9     ;;;
 ;;;    |  | |      /  |  |  |  | |  . `  |    |   ___/  |  | |  | |_ |     (oo)_____/      ;;;
 ;;;    |  | |  |\  \  |  `--'  | |  |\   |    |  |      |  | |  |__| |        WW  WW       ;;;
@@ -13,7 +13,7 @@
 ;; Author: Ivan Jordaan
 ;; Date: 2024-03-26
 ;; email: ivan@axoinvent.com
-;; Project: Database file to serve as append-only ledger 
+;; Project: Database file to serve as append-only ledger
 ;;
 
 ;;;
@@ -27,26 +27,23 @@
 ;;;; Verify Values
 ;;;
 
-(define (verify-values t)
-  (let ((p #t))
-    (table-for-each
-     (lambda (k v)
-       (if (not (list? v)) (set! p #f)))
-     t)
-    p))
+(define (verify-values l)
+  (and-map pair? l))
 
 ;;;
 ;;;; Add Entry To Perm
 ;;;
 
-(define (add-entry-to-perm id t)
+(define (add-to-perm l)
   (with-output-to-file (list
 			path: perm-path
 			append: #t)
     (lambda ()
-	  (begin
-	    (display (cons id t))
-	    (newline)))))
+      (if (verify-values l)
+	  (and
+           (display l)
+	   (newline))
+          (error "Concept :" concept "has invalid syntax")))))
 
 ;;;
 ;;;; Initialize-perm

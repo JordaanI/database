@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;                                                                                        ;;;
 ;;;     __  .______     ______   .__   __.    .______    __    _______.                    ;;;
-;;;    |  | |   _  \   /  __  \  |  \ |  |    |   _  \  |  |  /  _____|        _____       ;;;   
+;;;    |  | |   _  \   /  __  \  |  \ |  |    |   _  \  |  |  /  _____|        _____       ;;;
 ;;;    |  | |  |_)  | |  |  |  | |   \|  |    |  |_)  | |  | |  |  __      ^..^     \9     ;;;
 ;;;    |  | |      /  |  |  |  | |  . `  |    |   ___/  |  | |  | |_ |     (oo)_____/      ;;;
 ;;;    |  | |  |\  \  |  `--'  | |  |\   |    |  |      |  | |  |__| |        WW  WW       ;;;
@@ -13,7 +13,7 @@
 ;; Author: Ivan Jordaan
 ;; Date: 2024-04-01
 ;; email: ivan@axoinvent.com
-;; Project: Chord File for BroodB 
+;; Project: Chord File for BroodB
 ;;
 
 ;;;
@@ -25,19 +25,17 @@
   (let ((e (floor (/ ring-size (+ 1 initial-node-count)))) (base '()) (fingers '()))
     (let loop ((n e))
       (if (>= n ring-size)
-	   (with-output-to-file host-path
-	     (lambda ()			       
-	       (display (cons (reverse base) (list 0)))
-	       (newline)
-	       (display (cons (list 0 1 (list (list 1 e))) fingers))))
+	  (with-output-to-file host-path
+	    (lambda ()
+	      (display (cons (reverse base) (list 0)))
+	      (newline)
+	      (display (cons (list 0 1 (list (list 1 e))) fingers))))
 	  (and
 	   (with-output-to-file
 	       (list path: (node-path n)
 		     create: #t)
 	     (lambda ()
 	       (display (list (list 'version version-number) (list 'size e) (list 'load 0) (list 'entries)))
-	       (newline)
-	       (display (list))
 	       (newline)))
 	   (set! fingers (cons (list n 1 (list (list 1 (if (>= (+ n e) ring-size) e (+ n e))))) fingers))
 	   (set! base (cons n base))
@@ -109,7 +107,7 @@
 	(display version-info)
 	(newline)
 	(display finger-table)))
-    (rename-file (tmp-path 0) host-path #t)))  
+    (rename-file (tmp-path 0) host-path #t)))
 
 ;;;
 ;;;; Sort node info
@@ -138,17 +136,20 @@
 	 (node-info (car version-info))
 	 (version-number (car (reverse version-info)))
 	 (finger-info (cadr system-info)))
-    (println "Updating to version " (+ 1 version-number))
+    (and
+     (set! version-number (+ 1 version-number))
+     (display (string-append "Updating to version " (number->string version-number) "\n")))
     (let loop ((i m))
       (if (zero? i)
 	  (let loop ((i m))
-	    (if (zero? i) (println "Updated")
+	    (if (zero? i)
+                (display "Updated")
 		(and
 		 (fix-finger 0)
 		 (loop (- i 1)))))
 	  (and (let inner-loop ((node-info node-info))
 		 (if (not (null? node-info))
-		     (and 
+		     (and
 		      (fix-finger (car node-info))
 		      (inner-loop (cdr node-info)))))
 	       (loop (- i 1)))))))
