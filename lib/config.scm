@@ -48,7 +48,13 @@
 
 ;; perm-path
 
-(define perm-path (string-append data-path "/perm/perm" extension))
+(define perm-loc (string-append data-path "/perm"))
+
+(define perm-path (string-append perm-loc "/perm" extension))
+
+(define archive-path (string-append perm-loc "/archive/"))
+
+(define (zip-path file) (string-append archive-path (number->string file) "-" (number->string (current-jiffy)) ".zip"))
 
 ;; version path
 

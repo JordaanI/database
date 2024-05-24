@@ -49,6 +49,7 @@
 
 (define (get-remove version)
   (get-property-values 'remove version))
+
 ;;;
 ;;;; Create concept
 ;;;
@@ -154,3 +155,30 @@
      ((eof-object? entry) (raise "Entry does not exist"))
      ((equal? (car entry) id) (and (close-port node) (cadr entry)))
      (#t (find-concept id node)))))
+
+;;;
+;;;; Update Concept
+;;;
+
+(define (replace-concept concept)
+  (let* ((id (get-first-value 'id concept))
+         (successor (find-successor 0 id))
+         (node (with-input-from-file (node-path successor) read-all))
+         (successor-path (node-path successor)))
+    (add-to-perm concept)
+    (shell-command (string-append "zip " (zip-path successor) " " successor-path))
+    (with-output-to-file (list
+                          path: (tmp-path successor)
+                          create: #t)
+      (lambda ()
+        (display (car node))
+        (let loop ((concepts (cdr node)))
+          (if
+           (not (null? concepts))
+           (let* ((old-concept (car concepts))
+                  (old-id (car old-concept)))
+             (if (equal? id old-id) (display (list id concept))
+                 (display old-concept))
+             (loop (cdr concepts)))))))
+    (rename-file (tmp-path successor) successor-path)
+    (display (string-append (number->string id) " successfully updated"))))

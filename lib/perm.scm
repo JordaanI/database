@@ -16,6 +16,8 @@
 ;; Project: Database file to serve as append-only ledger
 ;;
 
+(define brood-version "alpha")
+
 ;;;
 ;;;; Generate internal ID
 ;;;
@@ -51,6 +53,7 @@
 
 (define (initialize-perm)
   (reset-clean-dir "perm")
+  (create-directory archive-path)
   (close-port (open-file (list
 			  path: perm-path
 			  create: #t))))
