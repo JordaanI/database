@@ -69,8 +69,9 @@
                  ((arg-equality arg "--init" "--reset") (and (init-system) (loop (cdr args))))
                  ((arg-equality arg "--version" "-v") (and (version-answer) (loop (cdr args))))
                  ((arg-equality arg "--help" "-h") (display-help))
-                 ((arg-equality arg "--replace-concept" "-rc") (command-replace-concept (cdr args) loop))
+                 ((arg-equality arg "--update-concept" "-uc") (command-update-concept (cdr args) loop))
                  ((arg-equality arg "--list" "-l") (command-list-perm (cdr args) loop))
+                 ((arg-equality arg "--create-multiple-concepts" "-cmc") (command-create-multiple-concepts (cdr args) loop))
                  (#t (unknown-arg-error arg)))))))))
 
 (define (check-input args)
@@ -89,10 +90,10 @@
      (cc-message id)
      (loop args))))
 
-(define (command-replace-concept args loop)
+(define (command-update-concept args loop)
   (if (not (null? args))
       (let ((concept (string->concept (car args))))
-        (if concept (and (replace-concept concept) (loop (cdr args))) (display "Incorrect syntax for replacement concept")))
+        (if concept (and (update-concept concept) (loop (cdr args))) (display "Incorrect syntax for replacement concept")))
       (display "A concept is required to replace another")))
 
 (define (string->concept s)
@@ -109,6 +110,16 @@
                 (pp concept)
                 (newline)) perm)
     (loop args)))
+
+(define (command-create-multiple-concepts args loop)
+  (let ((amount (if (not (null? args)) (string->number (car args)))))
+    (if (integer? amount)
+        (and
+         (for-each create-concept (make-list amount (cons "" "")))
+         (loop (cdr args)))
+        (and
+         (gc-error "--create-multiple-concepts")
+         (loop args)))))
 
 (define (yes-no-loop yes no #!key (yes-args '()) (no-args '()))
   (let ((ans (read)))

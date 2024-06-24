@@ -155,26 +155,10 @@
 	       (loop (- i 1)))))))
 
 ;;;
-;;;; Temp Utility (might be moved to permament utilities files ion the future)
+;;;; Perm Specific Utilities
 ;;;
 
-(define (reset-clean-dir p)
-  (let ((abs-path (string-append data-path "/" p)))
-    (if (member p (directory-files data-path))
-	(let ()
-	  (delete-file-or-directory abs-path #t)
-	  (display "Destroying old ")
-	  (display p)
-	  (newline)))
-    (create-directory abs-path)
-    (display "Creating new ")
-    (display p)
-    (newline)))
 
 (define (between n l u #!key (include? #t))
   (if (> l u) (between n l (+ u ring-size) include?: include?)
       (and (> n l) (if include? (<= n u) (< n u)))))
-
-(define (and-map p l)
-  (if (null? l) #t
-      (and (p (car l)) (and-map p (cdr l)))))

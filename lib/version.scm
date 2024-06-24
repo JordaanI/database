@@ -35,7 +35,7 @@
       (display `(remove)))))
 
 ;;;
-;;;; Version Utilities
+;;;; Version specific Utilities
 ;;;
 
 (define (get-property-values property concept)
@@ -49,6 +49,9 @@
 
 (define (get-remove version)
   (get-property-values 'remove version))
+
+(define (archive node)
+  (shell-command (string-append "zip " (zip-path node) " " (node-path node))))
 
 ;;;
 ;;;; Create concept
@@ -97,13 +100,19 @@
                           path: (tmp-path successor)
                           create: #t)
       (lambda ()
-        (display `(,(assoc 'version node-info)
-                   ,(assoc 'size node-info)
-                   (load ,(+ 1 (get-first-value 'load node-info)))
-                   (entries ,id ,@(get-property-values 'entries node-info))))
+        (display (update-node-info
+                  node-info
+                  load: (+ 1 (get-first-value 'load node-info))
+                  entries: (cons id (get-property-values 'entries node-info))))
         (display (list id concept))
         (for-each display node-entries)))
     (rename-file (tmp-path successor) (node-path successor))))
+
+(define (update-node-info node-info #!key (version #f) (size #f) (load #f) (entries #f))
+  `(,(if version `(version ,version) (assoc 'version node-info))
+    ,(if size `(size ,size) (assoc 'size node-info))
+    ,(if load `(load ,load) (assoc 'load node-info))
+    ,(if entries `(entries ,@entries) (assoc 'entries node-info))))
 
 ;;;
 ;;;; Maybe add concept to version
@@ -157,28 +166,44 @@
      (#t (find-concept id node)))))
 
 ;;;
-;;;; Update Concept
+;;;; Update Concept (checks need to be added to updated concepts)
 ;;;
 
-(define (replace-concept concept)
-  (let* ((id (get-first-value 'id concept))
-         (successor (find-successor 0 id))
-         (node (with-input-from-file (node-path successor) read-all))
-         (successor-path (node-path successor)))
-    (add-to-perm concept)
-    (shell-command (string-append "zip " (zip-path successor) " " successor-path))
-    (with-output-to-file (list
-                          path: (tmp-path successor)
-                          create: #t)
-      (lambda ()
-        (display (car node))
-        (let loop ((concepts (cdr node)))
-          (if
-           (not (null? concepts))
-           (let* ((old-concept (car concepts))
-                  (old-id (car old-concept)))
-             (if (equal? id old-id) (display (list id concept))
-                 (display old-concept))
-             (loop (cdr concepts)))))))
-    (rename-file (tmp-path successor) successor-path)
-    (display (string-append (number->string id) " successfully updated"))))
+(define (update-concept updated-concept)
+  (let ((id (get-id updated-concept)))
+    (remove-concept id)
+    (add-concept-to-version id updated-concept)))
+
+;;;
+;;;; Remove Concept (DISPLAY INEFFICIENCY)
+;;;
+
+(define (remove-concept id)
+  (let* ((successor (find-successor 0 id))
+         (successor-path (node-path successor))
+         (node (open-file successor-path))
+         (node-info (read node)))
+    (archive successor)
+    (if (member id (get-property-values 'entries node-info))
+        (and
+         (with-output-to-file (list path: (tmp-path successor) create: #t)
+           (lambda ()
+             (display (update-node-info
+                       node-info
+                       load: (- (get-first-value 'load node-info) 1)
+                       entries: (remove-first-value-from-list id (get-property-values 'entries node-info))))
+             (let loop ((concept (read node)))
+               (cond
+                ((eof-object? concept)
+                 (close-port node)
+                 #f)
+                ((equal? id (car concept))
+                 (for-each display (read-all node))
+                 (close-port node))
+                (#t
+                 (display concept)
+                 (loop (read node)))))))
+         (rename-file (tmp-path successor) successor-path))
+        (begin
+          (close-port node)
+          #f))))

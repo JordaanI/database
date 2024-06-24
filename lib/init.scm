@@ -16,6 +16,7 @@
 ;; Project: Temp Run folder for testing purposes
 ;;
 
+(include "../lib/utilities.scm")
 (include "../lib/config.scm")
 (include "../lib/perm.scm")
 (include "../lib/chord.scm")
