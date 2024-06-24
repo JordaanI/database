@@ -62,6 +62,7 @@
 
 (define (get-id concept)
   (get-first-value 'id concept))
+
 ;;;
 ;;;; Concept id taken?
 ;;;
@@ -119,11 +120,21 @@
 ;;;
 
 (define (add-concept-to-version id concept)
-  (let ((successor (find-successor 0 id)))
-    (add-to-perm concept)
-    (add-to-version id)
-    (add-to-node id concept successor)
-    id))
+  (let ((valid-concept (validate-concept concept)))
+    (if valid-concept
+        (let ((successor (find-successor 0 id)))
+          (add-to-perm concept)
+          (add-to-version id)
+          (add-to-node id concept successor)
+          id)
+        (raise "Concept is not valid"))))
+
+;;;
+;;;; Validate Concept
+;;;
+
+(define (validate-concept concept)
+  (and-map list? concept))
 
 ;;;
 ;;;; Next available id (could loop infinitely, needs to be restricted when all id's are taken)

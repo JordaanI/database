@@ -26,13 +26,6 @@
   (+ 1 (random-integer (- ring-size 1))))
 
 ;;;
-;;;; Verify Values
-;;;
-
-(define (verify-values l)
-  (and-map pair? l))
-
-;;;
 ;;;; Add Entry To Perm
 ;;;
 
@@ -41,11 +34,7 @@
 			path: perm-path
 			append: #t)
     (lambda ()
-      (if (verify-values l)
-	  (and
-           (display l)
-	   (newline))
-          (error "Concept :" concept "has invalid syntax")))))
+      (display l))))
 
 ;;;
 ;;;; Initialize-perm
