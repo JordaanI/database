@@ -34,3 +34,11 @@
   (initialize-perm)
   (initialize-version)
   (update-fingers))
+
+;; Delete brood
+
+(define (delete-brood)
+  (if (file-exists? brood-home)
+      (and (delete-file-or-directory brood-home #t)
+           (display "Brood culled successfully"))
+      (display "No Brood Found")))

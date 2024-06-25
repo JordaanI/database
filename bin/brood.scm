@@ -16,7 +16,7 @@
 ;; Project: executable for broodb
 ;;
 
-(include "../lib/init.scm")
+(include "../lib/system.scm")
 
 ;;;
 ;;;; Listen for command
@@ -39,26 +39,31 @@ Nodes
 - list
 - system info
 Help
-
 |#
+
 (define (command-loop)
   (let* ((args (cdr command))
-         (cmd (if (null? args) "" (car args))))
+         (cmd (maybe-read-args args)))
     (cond
-     ((equal? cmd "init") (init))
+     ((equal? cmd "init") (init-command))
+     ((equal? cmd "delete") (delete-brood-command))
      ((equal? cmd "concept") (concept-command (cdr args)))
-     ((equal? cmd "nodes"))
-     ((or (equal? cmd "--help") (equal? cmd "-h")))
+     ((equal? cmd "nodes") (nodes-command (cdr args)))
+     ((or (equal? cmd "--help") (equal? cmd "-h")) (brood-help))
      ((or (equal? cmd "--version") (equal? cmd "-v")))
      (#t (default-return cmd)))
     (newline)))
+
+
+(define (maybe-read-args args)
+  (if (null? args) "" (car args)))
 
 ;;;
 ;;;; concept-command
 ;;;
 
 (define (concept-command args)
-  (let ((action (car args)))
+  (let ((action (maybe-read-args args)))
     (cond
      ((equal? action "create") (create-concept-command (cdr args)))
      ((equal? action "update") (update-concept-command (cdr args)))
@@ -119,11 +124,80 @@ Help
   (display "FOR FUTURE DEVELOPMENT"))
 
 ;;;
+;;;; Node Command
+;;;
+
+(define (nodes-command args)
+  (let ((action (maybe-read-args args)))
+    (cond
+     ((equal? action "list") (list-nodes-command))
+     (#t (nodes-help action)))))
+
+  ;;;
+  ;;;; List Node
+  ;;;
+
+(define (list-nodes-command)
+  (let* ((host-info (with-input-from-file host-path read-all))
+         (active-nodes (car (car host-info))))
+    (for-each (lambda (node)
+                (display node)
+                (newline))
+              active-nodes)
+    (newline)
+    (display (string-append (number->string (length active-nodes)) " active node(s)"))))
+
+  ;;;
+  ;;;; Node Help
+  ;;;
+
+(define (nodes-help action)
+  (display "FOR FUTURE DEVELOPMENT"))
+
+;;;
 ;;;; Default Return
 ;;;
 
 (define (default-return arg)
   (display (string-append "Unknown command '" arg "'. Use -h/--help for a list of available commands.")))
+
+;;;
+;;;; Brood Help
+;;;
+
+(define (brood-help)
+  (display (string-append
+            "This is Broodb system\n\n"
+            "Commands have the format 'brood command [args]'\n"
+            "Args default to 'help' if not specified\n\n"
+            "Commands are:\n"
+            "\t- concept\n"
+            "\t- nodes\n"
+            "\t- init\n"
+            "\t- delete")))
+
+;;;
+;;;; INIT Command
+;;;
+
+(define (init-command)
+  (if (file-exists? brood-home)
+      (display "The Brood is already alive")
+      (and
+       (display "Generating a new Brood\n")
+       (init))))
+
+;;;
+;;;; Delete Brood
+;;;
+
+(define (delete-brood-command)
+  (display "This will permanently cull your Brood\nThis cannot be undone.\nProceed (Y/n) ")
+  (let loop ((answer (symbol->string (read))))
+    (cond
+     ((or (equal? answer "y") (equal? answer "Y")) (delete-brood))
+     ((equal? answer "n") (display "The Brood was spared"))
+     (#t (and (display "(Y/n) ") (loop (symbol->string (read))))))))
 
 ;;;
 ;;;; start the thing
