@@ -50,7 +50,7 @@ Help
      ((equal? cmd "nodes"))
      ((or (equal? cmd "--help") (equal? cmd "-h")))
      ((or (equal? cmd "--version") (equal? cmd "-v")))
-     (#t (default-return arg: cmd)))
+     (#t (default-return cmd)))
     (newline)))
 
 ;;;
@@ -63,7 +63,7 @@ Help
      ((equal? action "create") (create-concept-command (cdr args)))
      ((equal? action "update") (update-concept-command (cdr args)))
      ((equal? action "remove") (remove-concept-command (cdr args)))
-     ((equal? action "get"))
+     ((equal? action "get") (get-concept-command (cdr args)))
      (#t (concept-help action)))))
 
   ;;;
@@ -95,15 +95,34 @@ Help
 (define (update-concept-command args)
   (if (= 1 (length args))
       (let ((possible-concept (with-input-from-string (car args) read-all)))
-        ;;(update-concept possible-concept)
+        (update-concept possible-concept)
         (display (string-append "Updated concept successfully")))
       (raise "FOR FUTURE DEVELOPMENT")))
+
+
+  ;;;
+  ;;;; get concept
+  ;;;
+
+(define (get-concept-command args)
+  (if (= 1 (length args))
+      (let ((possible-id (string->number (car args))))
+        (if (integer? possible-id)
+            (display (get-concept possible-id))))
+      (raise "FOR FUTURE DEVELOPMENT")))
+
+  ;;;
+  ;;;; concept help
+  ;;;
+
+(define (concept-help action)
+  (display "FOR FUTURE DEVELOPMENT"))
 
 ;;;
 ;;;; Default Return
 ;;;
 
-(define (default-return #!key (arg #f))
+(define (default-return arg)
   (display (string-append "Unknown command '" arg "'. Use -h/--help for a list of available commands.")))
 
 ;;;
