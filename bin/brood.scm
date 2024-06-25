@@ -50,7 +50,7 @@ Help
      ((equal? cmd "concept") (concept-command (cdr args)))
      ((equal? cmd "nodes") (nodes-command (cdr args)))
      ((or (equal? cmd "--help") (equal? cmd "-h")) (brood-help))
-     ((or (equal? cmd "--version") (equal? cmd "-v")))
+     ((or (equal? cmd "--version") (equal? cmd "-v")) (version-command))
      (#t (default-return cmd)))
     (newline)))
 
@@ -79,7 +79,10 @@ Help
   (if (= 1 (length args))
       (let ((possible-concept (with-input-from-string (car args) read-all)))
         (display (string-append "Concept created with id: " (number->string (apply create-concept possible-concept)))))
-      (raise "FOR FUTURE DEVELOPMENT")))
+      (create-concept-command-help)))
+
+(define (create-concept-command-help)
+  (display "args-format: '(label1 prop1 prop2) ...'"))
 
   ;;;
   ;;;; Remove concept
@@ -88,10 +91,12 @@ Help
 (define (remove-concept-command args)
   (if (= 1 (length args))
       (let ((possible-id (string->number (car args))))
-        (if (integer? possible-id) (and
-                                    (remove-concept possible-id)
-                                    (display (string-append "Removed concept with id" (car args))))))
-      (raise "FOR FUTURE DEVELOPMENT")))
+        (if (integer? possible-id)  (remove-concept possible-id)
+            (remove-concept-command-help)))
+      (remove-concept-command-help)))
+
+(define (remove-concept-command-help)
+  (display "args-format: integer"))
 
   ;;;
   ;;;; update concept
@@ -102,8 +107,10 @@ Help
       (let ((possible-concept (with-input-from-string (car args) read-all)))
         (update-concept possible-concept)
         (display (string-append "Updated concept successfully")))
-      (raise "FOR FUTURE DEVELOPMENT")))
+      (update-concept-command-help)))
 
+(define (update-concept-command-help)
+  (display "args-format: '((id integer) (label1 prop1 prop2) ...)'"))
 
   ;;;
   ;;;; get concept
@@ -114,14 +121,22 @@ Help
       (let ((possible-id (string->number (car args))))
         (if (integer? possible-id)
             (display (get-concept possible-id))))
-      (raise "FOR FUTURE DEVELOPMENT")))
+      (get-concept-command-help)))
+
+(define (get-concept-command-help)
+  (display "args-format: integer"))
 
   ;;;
   ;;;; concept help
   ;;;
 
 (define (concept-help action)
-  (display "FOR FUTURE DEVELOPMENT"))
+  (display (string-append
+            "Concept commands are:\n"
+            "\t- create\n"
+            "\t- update\n"
+            "\t- remove\n"
+            "\t- get")))
 
 ;;;
 ;;;; Node Command
@@ -131,6 +146,7 @@ Help
   (let ((action (maybe-read-args args)))
     (cond
      ((equal? action "list") (list-nodes-command))
+     ((equal? action "system-info") (system-info-nodes-command))
      (#t (nodes-help action)))))
 
   ;;;
@@ -148,18 +164,34 @@ Help
     (display (string-append (number->string (length active-nodes)) " active node(s)"))))
 
   ;;;
+  ;;;; Nodes System info
+  ;;;
+
+(define (system-info-nodes-command)
+  (let* ((host-info (with-input-from-file host-path read-all))
+         (system-info host-info))
+    (display system-info)))
+
+  ;;;
   ;;;; Node Help
   ;;;
 
 (define (nodes-help action)
-  (display "FOR FUTURE DEVELOPMENT"))
+  (display (string-append
+            "Commands are:\n"
+            "\t- list"
+            "\t- system-info")))
 
 ;;;
 ;;;; Default Return
 ;;;
 
 (define (default-return arg)
-  (display (string-append "Unknown command '" arg "'. Use -h/--help for a list of available commands.")))
+  (display (string-append
+            (if (> (string-length arg) 0)
+                (string-append "Unknown command '" arg "'.")
+                "")
+            "Use -h/--help for a list of available commands.")))
 
 ;;;
 ;;;; Brood Help
@@ -198,6 +230,16 @@ Help
      ((or (equal? answer "y") (equal? answer "Y")) (delete-brood))
      ((equal? answer "n") (display "The Brood was spared"))
      (#t (and (display "(Y/n) ") (loop (symbol->string (read))))))))
+
+
+;;;
+;;;; Version Request
+;;;
+
+(define (version-command)
+  (display (string-append
+            "Broodb version: "
+            (number->string version-number))))
 
 ;;;
 ;;;; start the thing

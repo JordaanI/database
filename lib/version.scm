@@ -194,9 +194,9 @@
          (successor-path (node-path successor))
          (node (open-file successor-path))
          (node-info (read node)))
-    (archive successor)
     (if (member id (get-property-values 'entries node-info))
         (and
+         (archive successor)
          (with-output-to-file (list path: (tmp-path successor) create: #t)
            (lambda ()
              (display (update-node-info
@@ -214,7 +214,8 @@
                 (#t
                  (display concept)
                  (loop (read node)))))))
-         (rename-file (tmp-path successor) successor-path))
-        (begin
-          (close-port node)
-          #f))))
+         (rename-file (tmp-path successor) successor-path)
+         (display (string-append "Entry with id " (number->string id) " removed")))
+        (and
+         (display (string-append "Entry with id " (number->string id) " does not exist"))
+         (close-port node)))))
