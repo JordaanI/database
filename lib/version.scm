@@ -30,9 +30,8 @@
        path: (version-path version-number)
        create: #t)
     (lambda ()
-      (display `(active))
-      (newline)
-      (display `(remove)))))
+      (display 
+        `((active) (removed))))))
 
 ;;;
 ;;;; Version specific Utilities
@@ -47,8 +46,17 @@
 (define (get-active version)
   (get-property-values 'active version))
 
-(define (get-remove version)
-  (get-property-values 'remove version))
+(define (get-removed version)
+  (get-property-values 'removed version))
+
+(define (get-id concept)
+  (get-first-value 'id concept))
+
+(define (get-entries node)
+  (get-property-values 'entries node))
+
+(define (get-node-load node)
+  (get-first-value 'load node))
 
 (define (archive node)
   (shell-command (string-append "zip " (zip-path node) " " (node-path node))))
@@ -59,9 +67,6 @@
 
 (define (create-concept-template id properties)
   `((id ,id) ,@properties))
-
-(define (get-id concept)
-  (get-first-value 'id concept))
 
 ;;;
 ;;;; Concept id taken?
@@ -77,17 +82,20 @@
 ;;;
 
 (define (add-to-version id)
-  (let* ((version (with-input-from-file (version-path version-number) read-all))
-         (active (get-active version))
-         (remove (get-remove version)))
+  (let* ((version-info (with-input-from-file (version-path version-number) read))
+         (active (get-active version-info)))
     (with-output-to-file (list
                           path: (tmp-version version-number)
                           create: #t)
       (lambda ()
-        (display `(active ,id ,@active))
-        (newline)
-        (display `(remove ,@remove))))
+        (display (update-version-info 
+                   version-info 
+                   active: (cons id active)))))
     (rename-file (tmp-version version-number) (version-path version-number))))
+
+(define (update-version-info version-info #!key (removed #f) (active #f))
+  `(,(if removed `(removed ,@removed) (assoc 'removed version-info))
+    ,(if active `(active ,@active) (assoc 'active version-info))))
 
 ;;;
 ;;;; Add to node
@@ -104,7 +112,7 @@
         (display (update-node-info
                   node-info
                   load: (+ 1 (get-first-value 'load node-info))
-                  entries: (cons id (get-property-values 'entries node-info))))
+                  entries: (cons id (get-entries node-info))))
         (display (list id concept))
         (for-each display node-entries)))
     (rename-file (tmp-path successor) (node-path successor))))
@@ -193,29 +201,38 @@
   (let* ((successor (find-successor 0 id))
          (successor-path (node-path successor))
          (node (open-file successor-path))
-         (node-info (read node)))
-    (if (member id (get-property-values 'entries node-info))
+         (node-info (read node))
+         (version-path (version-path version-number))
+         (version-info (with-input-from-file version-path read)))
+    (if (member id (get-entries node-info))
         (and
-         (archive successor)
-         (with-output-to-file (list path: (tmp-path successor) create: #t)
-           (lambda ()
-             (display (update-node-info
-                       node-info
-                       load: (- (get-first-value 'load node-info) 1)
-                       entries: (remove-first-value-from-list id (get-property-values 'entries node-info))))
-             (let loop ((concept (read node)))
-               (cond
-                ((eof-object? concept)
-                 (close-port node)
-                 #f)
-                ((equal? id (car concept))
-                 (for-each display (read-all node))
-                 (close-port node))
-                (#t
-                 (display concept)
-                 (loop (read node)))))))
-         (rename-file (tmp-path successor) successor-path)
-         (display (string-append "Entry with id " (number->string id) " removed")))
-        (and
-         (display (string-append "Entry with id " (number->string id) " does not exist"))
-         (close-port node)))))
+          (archive successor)
+          (with-output-to-file (list path: (tmp-path successor) create: #t)
+            (lambda ()
+              (display (update-node-info
+                         node-info
+                         load: (- (get-node-load node-info) 1)
+                         entries: (remove-first-value-from-list id (get-entries node-info))))
+              (let loop ((concept (read node)))
+                   (cond
+                     ((eof-object? concept)
+                      (close-port node)
+                      #f)
+                     ((equal? id (car concept))
+                      (for-each display (read-all node))
+                      (close-port node))
+                     (#t
+                      (display concept)
+                      (loop (read node)))))))
+          (rename-file (tmp-path successor) successor-path)
+          (with-output-to-file (list path: (tmp-version version-number) create: #t)
+            (lambda ()
+              (display (update-version-info
+                         version-info
+                         active: (remove-first-value-from-list id (get-active version-info))
+                         removed: `(,id ,@(get-removed version-info))))))
+          (rename-file (tmp-version version-number) version-path)
+          (display (string-append "Entry with id " (number->string id) " removed")))
+      (and
+        (display (string-append "Entry with id " (number->string id) " does not exist"))
+        (close-port node)))))

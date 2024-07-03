@@ -61,6 +61,7 @@
 (define (version-path version) (string-append data-path "/version/" (number->string version) extension))
 
 (define (tmp-version version) (string-append data-path "/version/tmp-" (number->string version)))
+
 ;; tmp path
 
 (define (tmp-path node) (string-append nodes-path "/tmp-" (number->string node) extension))

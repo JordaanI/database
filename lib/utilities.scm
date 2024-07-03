@@ -31,7 +31,7 @@
   (cond
    ((null? l) '())
    ((equal? v (car l)) (cdr l))
-   (#t (car l) (remove-first-value-from-list (cdr l)))))
+   (#t (car l) (remove-first-value-from-list v (cdr l)))))
 
 ;; Directory
 
