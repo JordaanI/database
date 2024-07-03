@@ -76,13 +76,18 @@ Help
   ;;;
 
 (define (create-concept-command args)
-  (if (= 1 (length args))
-      (let ((possible-concept (with-input-from-string (car args) read-all)))
-        (display (string-append "Concept created with id: " (number->string (apply create-concept possible-concept)))))
-      (create-concept-command-help)))
+  (let ((arg-length (length args)))
+    (cond 
+      ((= 2 arg-length)
+       (let ((key (car args))
+             (possible-concept (with-input-from-string (cadr args) read-all)))
+         (display (string-append "Concept created with id: " (number->string (apply create-concept (cons key possible-concept)))))))
+      ((and (= 1 arg-length) (string? (car args))) 
+       (display (string-append "Concept created with id: " (number->string (create-concept (car args))))))
+      (#t (create-concept-command-help)))))
 
 (define (create-concept-command-help)
-  (display "args-format: '(label1 prop1 prop2) ...'"))
+  (display "args-format: 'key' '(label1 prop1 prop2) ...'"))
 
   ;;;
   ;;;; Remove concept
@@ -90,9 +95,8 @@ Help
 
 (define (remove-concept-command args)
   (if (= 1 (length args))
-      (let ((possible-id (string->number (car args))))
-        (if (integer? possible-id)  (remove-concept possible-id)
-            (remove-concept-command-help)))
+      (let ((key (car args)))
+        (remove-concept key))
       (remove-concept-command-help)))
 
 (define (remove-concept-command-help)
@@ -103,11 +107,19 @@ Help
   ;;;
 
 (define (update-concept-command args)
-  (if (= 1 (length args))
-      (let ((possible-concept (with-input-from-string (car args) read-all)))
-        (update-concept possible-concept)
-        (display (string-append "Updated concept successfully")))
-      (update-concept-command-help)))
+  (let ((arg-length (length args)))
+    (cond
+      ((= 2 arg-length)
+       (let ((key (car args))
+             (possible-concept (with-input-from-string (cadr args) read-all)))
+         (if (string? key)
+             (and (update-concept key possible-concept)
+                  (display (string-append "Updated concept successfully")))
+           (update-concept-command-help))))
+      ((and (= 1 arg-length) (string? (car args)))
+       (update-concept key possible-concept)
+       (display (string-append (string-append "Removed properties for " key))))
+      (#t (update-concept-command-help)))))
 
 (define (update-concept-command-help)
   (display "args-format: '((id integer) (label1 prop1 prop2) ...)'"))
@@ -118,10 +130,9 @@ Help
 
 (define (get-concept-command args)
   (if (= 1 (length args))
-      (let ((possible-id (string->number (car args))))
-        (if (integer? possible-id)
-            (display (get-concept possible-id))))
-      (get-concept-command-help)))
+      (let ((key (car args)))
+        (display (get-concept key)))
+    (get-concept-command-help)))
 
 (define (get-concept-command-help)
   (display "args-format: integer"))

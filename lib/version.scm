@@ -65,8 +65,8 @@
 ;;;; Create concept
 ;;;
 
-(define (create-concept-template id properties)
-  `((id ,id) ,@properties))
+(define (create-concept-template id key properties)
+  `((id ,id) (key ,key) ,@properties))
 
 ;;;
 ;;;; Concept id taken?
@@ -81,7 +81,7 @@
 ;;;; Add to version
 ;;;
 
-(define (add-to-version id)
+(define (add-to-version id key)
   (let* ((version-info (with-input-from-file (version-path version-number) read))
          (active (get-active version-info)))
     (with-output-to-file (list
@@ -90,12 +90,17 @@
       (lambda ()
         (display (update-version-info 
                    version-info 
-                   active: (cons id active)))))
+                   active: (cons (list key id) active)))))
     (rename-file (tmp-version version-number) (version-path version-number))))
 
 (define (update-version-info version-info #!key (removed #f) (active #f))
   `(,(if removed `(removed ,@removed) (assoc 'removed version-info))
     ,(if active `(active ,@active) (assoc 'active version-info))))
+
+(define (get-id-from-key key)
+  (let* ((version-info (with-input-from-file (version-path version-number) read))
+         (active (get-active version-info)))
+    (get-first-value (string->symbol key) active)))
 
 ;;;
 ;;;; Add to node
@@ -127,12 +132,12 @@
 ;;;; Maybe add concept to version
 ;;;
 
-(define (add-concept-to-version id concept)
+(define (add-concept-to-version id key concept)
   (let ((valid-concept (validate-concept concept)))
     (if valid-concept
         (let ((successor (find-successor 0 id)))
           (add-to-perm concept)
-          (add-to-version id)
+          (add-to-version id key)
           (add-to-node id concept successor)
           id)
         (raise "Concept is not valid"))))
@@ -142,7 +147,7 @@
 ;;;
 
 (define (validate-concept concept)
-  (and-map list? concept))
+  (and (and-map list? concept) (assoc 'key concept)))
 
 ;;;
 ;;;; Next available id (could loop infinitely, needs to be restricted when all id's are taken)
@@ -156,16 +161,17 @@
 ;;;; Create Concept
 ;;;
 
-(define (create-concept . properties)
+(define (create-concept key . properties)
   (let ((id (next-available-id)))
-    (add-concept-to-version id (create-concept-template id properties))))
+    (add-concept-to-version id key (create-concept-template id key properties))))
 
 ;;;
 ;;;; Get Concept
 ;;;
 
-(define (get-concept id)
-  (let* ((successor (find-successor 0 id))
+(define (get-concept key)
+  (let* ((id (get-id-from-key key))
+         (successor (find-successor 0 id))
          (node (open-file (node-path successor))))
     (if (member id (get-property-values 'entries (read node)))
         (find-concept id node)
@@ -188,17 +194,18 @@
 ;;;; Update Concept (checks need to be added to updated concepts)
 ;;;
 
-(define (update-concept updated-concept)
-  (let ((id (get-id updated-concept)))
-    (remove-concept id)
-    (add-concept-to-version id updated-concept)))
+(define (update-concept key updated-concept)
+  (let ((id (get-id-from-key key)))
+    (remove-concept key)
+    (add-concept-to-version id key updated-concept)))
 
 ;;;
 ;;;; Remove Concept (DISPLAY INEFFICIENCY)
 ;;;
 
-(define (remove-concept id)
-  (let* ((successor (find-successor 0 id))
+(define (remove-concept key)
+  (let* ((id (get-id-from-key key))
+         (successor (find-successor 0 id))
          (successor-path (node-path successor))
          (node (open-file successor-path))
          (node-info (read node))
@@ -232,7 +239,7 @@
                          active: (remove-first-value-from-list id (get-active version-info))
                          removed: `(,id ,@(get-removed version-info))))))
           (rename-file (tmp-version version-number) version-path)
-          (display (string-append "Entry with id " (number->string id) " removed")))
+          (display (string-append "Entry " key " removed")))
       (and
-        (display (string-append "Entry with id " (number->string id) " does not exist"))
+        (display (string-append "Entry " key " does not exist"))
         (close-port node)))))
