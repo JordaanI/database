@@ -77,14 +77,14 @@ Help
 
 (define (create-concept-command args)
   (let ((arg-length (length args)))
-    (cond 
-      ((= 2 arg-length)
-       (let ((key (car args))
-             (possible-concept (with-input-from-string (cadr args) read-all)))
-         (display (string-append "Concept created with id: " (number->string (apply create-concept (cons key possible-concept)))))))
-      ((and (= 1 arg-length) (string? (car args))) 
-       (display (string-append "Concept created with id: " (number->string (create-concept (car args))))))
-      (#t (create-concept-command-help)))))
+    (cond
+     ((= 2 arg-length)
+      (let ((key (car args))
+            (possible-concept (with-input-from-string (cadr args) read-all)))
+        (display (string-append "Concept created with id: " (number->string (apply create-concept (cons key possible-concept)))))))
+     ((and (= 1 arg-length) (string? (car args)))
+      (display (string-append "Concept created with id: " (number->string (create-concept (car args))))))
+     (#t (create-concept-command-help)))))
 
 (define (create-concept-command-help)
   (display "args-format: 'key' '(label1 prop1 prop2) ...'"))
@@ -100,7 +100,7 @@ Help
       (remove-concept-command-help)))
 
 (define (remove-concept-command-help)
-  (display "args-format: integer"))
+  (display "args-format: key"))
 
   ;;;
   ;;;; update concept
@@ -109,20 +109,20 @@ Help
 (define (update-concept-command args)
   (let ((arg-length (length args)))
     (cond
-      ((= 2 arg-length)
-       (let ((key (car args))
-             (possible-concept (with-input-from-string (cadr args) read-all)))
-         (if (string? key)
-             (and (update-concept key possible-concept)
-                  (display (string-append "Updated concept successfully")))
-           (update-concept-command-help))))
-      ((and (= 1 arg-length) (string? (car args)))
-       (update-concept key possible-concept)
-       (display (string-append (string-append "Removed properties for " key))))
-      (#t (update-concept-command-help)))))
+     ((= 2 arg-length)
+      (let ((key (car args))
+            (possible-concept (with-input-from-string (cadr args) read-all)))
+        (if (string? key)
+            (and (update-concept key possible-concept)
+                 (display (string-append "Updated concept successfully")))
+            (update-concept-command-help))))
+     ((and (= 1 arg-length) (string? (car args)))
+      (update-concept key possible-concept)
+      (display (string-append (string-append "Removed properties for " key))))
+     (#t (update-concept-command-help)))))
 
 (define (update-concept-command-help)
-  (display "args-format: '((id integer) (label1 prop1 prop2) ...)'"))
+  (display "args-format: 'key' '((label1 prop1 prop2) ...)'"))
 
   ;;;
   ;;;; get concept
@@ -132,7 +132,7 @@ Help
   (if (= 1 (length args))
       (let ((key (car args)))
         (display (get-concept key)))
-    (get-concept-command-help)))
+      (get-concept-command-help)))
 
 (define (get-concept-command-help)
   (display "args-format: integer"))
@@ -158,6 +158,7 @@ Help
     (cond
      ((equal? action "list") (list-nodes-command))
      ((equal? action "system-info") (system-info-nodes-command))
+     ((equal? action "system-load") (system-load-nodes-command))
      (#t (nodes-help action)))))
 
   ;;;
@@ -191,7 +192,18 @@ Help
   (display (string-append
             "Commands are:\n"
             "\t- list"
-            "\t- system-info")))
+            "\t- system-info"
+            "\t- system-load")))
+
+  ;;;
+  ;;;; System Load
+  ;;;
+
+(define (system-load-nodes-command)
+  (let ((version-info (with-input-from-file (version-path version-number) read)))
+    (display "System Load: ")
+    (display (round (exact->inexact (/ (get-system-load version-info) ring-size))))
+    (display "%")))
 
 ;;;
 ;;;; Default Return

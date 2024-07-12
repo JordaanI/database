@@ -31,7 +31,7 @@
        create: #t)
     (lambda ()
       (display
-       `((active) (removed))))))
+       `((load 0) (active) (removed))))))
 
 ;;;
 ;;;; Version specific Utilities
@@ -48,6 +48,9 @@
 
 (define (get-removed version)
   (get-property-values 'removed version))
+
+(define (get-system-load version)
+  (get-first-value 'load version))
 
 (define (get-id concept)
   (get-first-value 'id concept))
@@ -84,12 +87,14 @@
       (lambda ()
         (display (update-version-info
                   version-info
-                  active: (cons id active)))))
+                  active: (cons id active)
+                  load: (+ (get-system-load version-info) 1)))))
     (rename-file (tmp-version version-number) (version-path version-number))))
 
-(define (update-version-info version-info #!key (removed #f) (active #f))
+(define (update-version-info version-info #!key (load #f) (removed #f) (active #f))
   `(,(if removed `(removed ,@removed) (assoc 'removed version-info))
-    ,(if active `(active ,@active) (assoc 'active version-info))))
+    ,(if active `(active ,@active) (assoc 'active version-info))
+    ,(if load `(load ,load) (assoc 'load version-info))))
 
 ;;;
 ;;;; Add to node
@@ -240,6 +245,7 @@
            (lambda ()
              (display (update-version-info
                        version-info
+                       load: (- (get-system-load version-info) 1)
                        active: (remove-first-value-from-list id (get-active version-info))
                        removed: `(,id ,@(get-removed version-info))))))
          (rename-file (tmp-version version-number) version-path)
