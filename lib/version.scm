@@ -30,8 +30,8 @@
        path: (version-path version-number)
        create: #t)
     (lambda ()
-      (display 
-        `((active) (removed))))))
+      (display
+       `((active) (removed))))))
 
 ;;;
 ;;;; Version specific Utilities
@@ -58,6 +58,9 @@
 (define (get-node-load node)
   (get-first-value 'load node))
 
+(define (get-key concept)
+  (get-first-value 'key concept))
+
 (define (archive node)
   (shell-command (string-append "zip " (zip-path node) " " (node-path node))))
 
@@ -67,15 +70,6 @@
 
 (define (create-concept-template id key properties)
   `((id ,id) (key ,key) ,@properties))
-
-;;;
-;;;; Concept id taken?
-;;;
-
-(define (id-available id)
-  (let* ((successor (find-successor 0 id))
-         (node-info (with-input-from-file (node-path successor) read)))
-    (if (not (member id (cdr (assoc 'entries node-info)))) successor #f)))
 
 ;;;
 ;;;; Add to version
@@ -88,19 +82,14 @@
                           path: (tmp-version version-number)
                           create: #t)
       (lambda ()
-        (display (update-version-info 
-                   version-info 
-                   active: (cons (list key id) active)))))
+        (display (update-version-info
+                  version-info
+                  active: (cons id active)))))
     (rename-file (tmp-version version-number) (version-path version-number))))
 
 (define (update-version-info version-info #!key (removed #f) (active #f))
   `(,(if removed `(removed ,@removed) (assoc 'removed version-info))
     ,(if active `(active ,@active) (assoc 'active version-info))))
-
-(define (get-id-from-key key)
-  (let* ((version-info (with-input-from-file (version-path version-number) read))
-         (active (get-active version-info)))
-    (get-first-value (string->symbol key) active)))
 
 ;;;
 ;;;; Add to node
@@ -118,7 +107,7 @@
                   node-info
                   load: (+ 1 (get-first-value 'load node-info))
                   entries: (cons id (get-entries node-info))))
-        (display (list id concept))
+        (display concept)
         (for-each display node-entries)))
     (rename-file (tmp-path successor) (node-path successor))))
 
@@ -133,14 +122,13 @@
 ;;;
 
 (define (add-concept-to-version id key concept)
-  (let ((valid-concept (validate-concept concept)))
-    (if valid-concept
-        (let ((successor (find-successor 0 id)))
-          (add-to-perm concept)
-          (add-to-version id key)
-          (add-to-node id concept successor)
-          id)
-        (raise "Concept is not valid"))))
+  (if (validate-concept concept)
+      (let ((successor (find-successor 0 id)))
+        (add-to-perm concept)
+        (add-to-version id key)
+        (add-to-node id concept successor)
+        id)
+      (raise "Concept is not valid")))
 
 ;;;
 ;;;; Validate Concept
@@ -150,19 +138,32 @@
   (and (and-map list? concept) (assoc 'key concept)))
 
 ;;;
-;;;; Next available id (could loop infinitely, needs to be restricted when all id's are taken)
-;;;
-
-(define (next-available-id)
-  (let ((id (gen-id)))
-    (if (id-available id) id (next-available-id))))
-
-;;;
 ;;;; Create Concept
 ;;;
 
+(define (concat-integer l)
+  (string->number (apply string-append l)))
+
+(define (shift-char sl)
+  (lambda (c)
+    (let* ((i (char->integer c))
+           (si (if (< sl 4) (+ i sl)
+                   (- i 1))))
+      (number->string si))))
+
+(define (hash key)
+  (let* ((sl (string-length key))
+         (hv (modulo (+ sl (* (expt sl 2) (concat-integer (map (shift-char sl) (string->list key))))) ring-size))
+         (concept (%get-concept hv)))
+    (if (and concept (equal? key (get-key concept))) (probe hv key 1) hv)))
+
+(define (probe hv key p)
+  (let* ((nhv (modulo (+ hv (* (string-length key) p)) ring-size))
+         (concept (%get-concept nhv)))
+    (if (and concept (equal? key (get-key concept))) (probe hv key (+ p 1)) nhv)))
+
 (define (create-concept key . properties)
-  (let ((id (next-available-id)))
+  (let* ((id (hash key)))
     (add-concept-to-version id key (create-concept-template id key properties))))
 
 ;;;
@@ -170,14 +171,17 @@
 ;;;
 
 (define (get-concept key)
-  (let* ((id (get-id-from-key key))
-         (successor (find-successor 0 id))
+  (let* ((id (hash key)))
+    (%get-concept id)))
+
+(define (%get-concept id)
+  (let* ((successor (find-successor 0 id))
          (node (open-file (node-path successor))))
     (if (member id (get-property-values 'entries (read node)))
         (find-concept id node)
         (and
          (close-port node)
-         (raise "Entry does not exist")))))
+         #f))))
 
 ;;;
 ;;;; Find concept
@@ -186,16 +190,16 @@
 (define (find-concept id node)
   (let ((entry (read node)))
     (cond
-     ((eof-object? entry) (raise "Entry does not exist"))
-     ((equal? (car entry) id) (and (close-port node) (cadr entry)))
-     (#t (find-concept id node)))))
+     ((eof-object? entry) '())
+     ((equal? (get-id entry) id) (and (close-port node) entry))
+     (#t (find-concept ID node)))))
 
 ;;;
 ;;;; Update Concept (checks need to be added to updated concepts)
 ;;;
 
 (define (update-concept key updated-concept)
-  (let ((id (get-id-from-key key)))
+  (let ((id (hash key)))
     (remove-concept key)
     (add-concept-to-version id key updated-concept)))
 
@@ -204,7 +208,7 @@
 ;;;
 
 (define (remove-concept key)
-  (let* ((id (get-id-from-key key))
+  (let* ((id (hash key))
          (successor (find-successor 0 id))
          (successor-path (node-path successor))
          (node (open-file successor-path))
@@ -213,33 +217,33 @@
          (version-info (with-input-from-file version-path read)))
     (if (member id (get-entries node-info))
         (and
-          (archive successor)
-          (with-output-to-file (list path: (tmp-path successor) create: #t)
-            (lambda ()
-              (display (update-node-info
-                         node-info
-                         load: (- (get-node-load node-info) 1)
-                         entries: (remove-first-value-from-list id (get-entries node-info))))
-              (let loop ((concept (read node)))
-                   (cond
-                     ((eof-object? concept)
-                      (close-port node)
-                      #f)
-                     ((equal? id (car concept))
-                      (for-each display (read-all node))
-                      (close-port node))
-                     (#t
-                      (display concept)
-                      (loop (read node)))))))
-          (rename-file (tmp-path successor) successor-path)
-          (with-output-to-file (list path: (tmp-version version-number) create: #t)
-            (lambda ()
-              (display (update-version-info
-                         version-info
-                         active: (remove-first-value-from-list id (get-active version-info))
-                         removed: `(,id ,@(get-removed version-info))))))
-          (rename-file (tmp-version version-number) version-path)
-          (display (string-append "Entry " key " removed")))
-      (and
-        (display (string-append "Entry " key " does not exist"))
-        (close-port node)))))
+         (archive successor)
+         (with-output-to-file (list path: (tmp-path successor) create: #t)
+           (lambda ()
+             (display (update-node-info
+                       node-info
+                       load: (- (get-node-load node-info) 1)
+                       entries: (remove-first-value-from-list id (get-entries node-info))))
+             (let loop ((concept (read node)))
+               (cond
+                ((eof-object? concept)
+                 (close-port node)
+                 #f)
+                ((equal? id (get-id concept))
+                 (for-each display (read-all node))
+                 (close-port node))
+                (#t
+                 (display concept)
+                 (loop (read node)))))))
+         (rename-file (tmp-path successor) successor-path)
+         (with-output-to-file (list path: (tmp-version version-number) create: #t)
+           (lambda ()
+             (display (update-version-info
+                       version-info
+                       active: (remove-first-value-from-list id (get-active version-info))
+                       removed: `(,id ,@(get-removed version-info))))))
+         (rename-file (tmp-version version-number) version-path)
+         (display (string-append "Entry " key " removed")))
+        (and
+         (display (string-append "Entry " key " does not exist"))
+         (close-port node)))))
