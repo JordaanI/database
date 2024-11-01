@@ -24,6 +24,9 @@
 
 (define command (command-line))
 
+
+(define HAS_BROOD #f)
+
 ;;;
 ;;;; Command loop
 ;;;
@@ -44,16 +47,22 @@ Help
 (define (command-loop)
   (let* ((args (cdr command))
          (cmd (maybe-read-args args)))
+    (if (file-exists? brood-home) (set! HAS_BROOD #t))
     (cond
-     ((equal? cmd "init") (init-command))
-     ((equal? cmd "delete") (delete-brood-command))
-     ((equal? cmd "concept") (concept-command (cdr args)))
-     ((equal? cmd "nodes") (nodes-command (cdr args)))
+     ((equal? cmd "init") (if (not HAS_BROOD) (init-command) (display "You already have a brood")))
+     ((equal? cmd "delete") (with-brood-existance delete-brood-command))
+     ((equal? cmd "concept") (with-brood-existance concept-command (cdr args)))
+     ((equal? cmd "nodes") (with-brood-existance nodes-command (cdr args)))
      ((or (equal? cmd "--help") (equal? cmd "-h")) (brood-help))
      ((or (equal? cmd "--version") (equal? cmd "-v")) (version-command))
      (#t (default-return cmd)))
     (newline)))
 
+(define (with-brood-existance func #!optional args)
+  (cond
+   ((and HAS_BROOD args) (func args))
+   (HAS_BROOD (func))
+   (#t (display "You have no active brood"))))
 
 (define (maybe-read-args args)
   (if (null? args) "" (car args)))
@@ -214,15 +223,16 @@ Help
             (if (> (string-length arg) 0)
                 (string-append "Unknown command '" arg "'.")
                 "")
-            "Use -h/--help for a list of available commands.")))
+            "Broodb: Use -h/--help for a list of available commands.")))
 
 ;;;
 ;;;; Brood Help
 ;;;
 
 (define (brood-help)
+  (display  "This is Broodb system\n\n")
+  (if (file-exists? brood-home) (display "You currently have a brood"))
   (display (string-append
-            "This is Broodb system\n\n"
             "Commands have the format 'brood command [args]'\n"
             "Args default to 'help' if not specified\n\n"
             "Commands are:\n"
