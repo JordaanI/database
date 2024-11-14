@@ -16,21 +16,30 @@
 ;; Project: Config File for BroodB
 ;;
 
+;; Consts
+
+(define (conf)
+  (let* ((path-string (cdr (shell-command "pwd" #t)))
+         (path (substring path-string 0 (- (string-length path-string) 1)))
+         (brood (string-append path ".brood")))
+    (if (file-exists? brood) (with-input-from-file brood read-all)
+        `((m . 8) (nodes . 5) (home . ,path)))))
 
 ;; m value
 
-(define m 8)
+(define m (cdr (assoc 'm (conf))))
+
 ;; Ring Size
 
 (define ring-size (expt 2 m))
 
 ;; Amount of initial nodes
 
-(define initial-node-count 4)
+(define initial-node-count (cdr (assoc 'nodes (conf))))
 
 ;; relative path
 
-(define home (get-environment-variable "HOME"))
+(define home (cdr (assoc 'home (conf))))
 
 (define brood-home (string-append home "/brood"))
 

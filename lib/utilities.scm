@@ -49,3 +49,9 @@
     (display "Creating new ")
     (display p)
     (newline)))
+
+;;; pwd
+
+(define (pwd)
+  (let ((raw (cdr (shell-command "pwd" #t))))
+    (substring raw 0 (- (string-length raw) 1))))

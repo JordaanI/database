@@ -132,7 +132,7 @@
         (add-to-perm concept)
         (add-to-version id key)
         (add-to-node id concept successor)
-        id)
+        concept)
       (raise "Concept is not valid")))
 
 ;;;

@@ -24,9 +24,6 @@
 
 (define command (command-line))
 
-
-(define HAS_BROOD #f)
-
 ;;;
 ;;;; Command loop
 ;;;
@@ -47,12 +44,11 @@ Help
 (define (command-loop)
   (let* ((args (cdr command))
          (cmd (maybe-read-args args)))
-    (if (file-exists? brood-home) (set! HAS_BROOD #t))
     (cond
-     ((equal? cmd "init") (if (not HAS_BROOD) (init-command) (display "You already have a brood")))
-     ((equal? cmd "delete") (with-brood-existance delete-brood-command))
-     ((equal? cmd "concept") (with-brood-existance concept-command (cdr args)))
-     ((equal? cmd "nodes") (with-brood-existance nodes-command (cdr args)))
+     ((equal? cmd "init") (init-command))
+     ((equal? cmd "delete") (delete-brood-command))
+     ((equal? cmd "concept") (concept-command (cdr args)))
+     ((equal? cmd "nodes") (nodes-command (cdr args)))
      ((or (equal? cmd "--help") (equal? cmd "-h")) (brood-help))
      ((or (equal? cmd "--version") (equal? cmd "-v")) (version-command))
      (#t (default-return cmd)))
@@ -246,11 +242,8 @@ Help
 ;;;
 
 (define (init-command)
-  (if (file-exists? brood-home)
-      (display "The Brood is already alive")
-      (and
-       (display "Generating a new Brood\n")
-       (init))))
+  (display "Generating a new Brood\n")
+  (init))
 
 ;;;
 ;;;; Delete Brood
