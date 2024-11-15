@@ -11,38 +11,17 @@
 ;;
 ;;
 ;; Author: Ivan Jordaan
-;; Date: 2024-03-26
+;; Date: 2024-11-15
 ;; email: ivan@axoinvent.com
-;; Project: Database file to serve as append-only ledger
+;; Project: Perm
 ;;
 
-(define brood-version "alpha")
+(define perm-mutex (make-mutex))
 
-;;;
-;;;; Generate internal ID
-;;;
-
-(define (gen-id)
-  (+ 1 (random-integer (- ring-size 1))))
-
-;;;
-;;;; Add Entry To Perm
-;;;
-
-(define (add-to-perm l)
-  (with-output-to-file (list
-			path: perm-path
-			append: #t)
-    (lambda ()
-      (display l))))
-
-;;;
-;;;; Initialize-perm
-;;;
-
-(define (initialize-perm)
-  (reset-clean-dir "perm")
-  (create-directory archive-path)
-  (close-port (open-file (list
-			  path: perm-path
-			  create: #t))))
+;; Optimizations exist here for large perms
+(define (add-to-perm concept)
+  (thread
+   (lambda ()
+     (mutex-lock! perm-mutex)
+     (write-out perm-file concept append: #t)
+     (mutex-unlock! perm-mutex))))

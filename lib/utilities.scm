@@ -11,47 +11,53 @@
 ;;
 ;;
 ;; Author: Ivan Jordaan
-;; Date: 2024-06-24
+;; Date: 2024-11-14
 ;; email: ivan@axoinvent.com
-;; Project: Utilities file for a standalone brood implementation
+;; Project: Utilities
 ;;
 
-                                        ; Global utilities
-;; lists
+;;; Read/Write utilities
 
-;;; And map
+(define (write-out path obj #!key (append #f))
+  (let ((data (if (file-exists? path) (read-in path) #!eof)))
+    (with-output-to-file
+        path
+      (lambda ()
+        (display (object->u8vector (if append  (cond
+                                                ((eof-object? data) obj)
+                                                ((list? data) (cons obj data))
+                                                (#t (list obj data)))
+                                       obj)))))))
 
-(define (and-map p l)
-  (if (null? l) #t
-      (and (p (car l)) (and-map p (cdr l)))))
+(define (read-in path)
+  (let ((v (with-input-from-file path read)))
+    (if (not (eof-object? v)) (u8vector->object v)
+        v)))
 
-;;; Remove value from list
+(define (strip-spaces-to-char s)
+  (let loop ((l (string->list s)))
+    (if (null? l) (list)
+        (let ((c (car l)))
+          (if (char=? (car l) #\space) (loop (cdr l))
+              (cons c (loop (cdr l))))))))
 
-(define (remove-first-value-from-list v l)
+(define (between n l h #!key (include? #t))
+  (let ((op (if include? <= <)))
+    (or
+     (= n h)
+     (and (> n l) (op n h))
+     (and (< h l) (or (op n h) (> n l))))))
+
+
+(define (pick-random l)
+  (list-ref l (random-integer (length l))))
+
+(define (replace l o n)
   (cond
-   ((null? l) '())
-   ((equal? v (car l)) (cdr l))
-   (#t (car l) (remove-first-value-from-list v (cdr l)))))
+   ((null? l) (list))
+   ((equal? o (car l)) (cons n (replace (cdr l) o n)))
+   (#t (cons (car l) (replace (cdr l) o n)))))
 
-;; Directory
-
-;;; Clean
-
-(define (reset-clean-dir p)
-  (let ((abs-path (string-append data-path "/" p)))
-    (if (member p (directory-files data-path))
-	(let ()
-	  (delete-file-or-directory abs-path #t)
-	  (display "Destroying old ")
-	  (display p)
-	  (newline)))
-    (create-directory abs-path)
-    (display "Creating new ")
-    (display p)
-    (newline)))
-
-;;; pwd
-
-(define (pwd)
-  (let ((raw (cdr (shell-command "pwd" #t))))
-    (substring raw 0 (- (string-length raw) 1))))
+(define (replace! l o n)
+  (if (member o l) (replace l o n)
+      (cons n l)))
